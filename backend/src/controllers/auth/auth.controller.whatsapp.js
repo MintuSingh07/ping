@@ -12,13 +12,11 @@ const client = new Client({
 let isInitialized = false;
 
 // Global event listeners (defined once)
-client.on("ready", () => console.log("✅ WhatsApp Client is ready!"));
-client.on("authenticated", () => console.log("✅ Authentication successful"));
-client.on("auth_failure", (msg) =>
-  console.error("❌ Authentication failed:", msg),
-);
+client.on("ready", () => console.log("WhatsApp Client is ready!"));
+client.on("authenticated", () => console.log("Authentication successful"));
+client.on("auth_failure", (msg) => console.error("Authentication failed:", msg));
 client.on("disconnected", (msg) => {
-  console.log("⚠️ Client disconnected:", msg);
+  console.log("Client disconnected:", msg);
   isInitialized = false;
 });
 
@@ -44,7 +42,7 @@ async function whatsappLoginQrController(req, res) {
 
     // Listen for the next QR code
     client.once("qr", (qr) => {
-      console.log("📥 QR Code received (Scan this in WhatsApp):", qr);
+      console.log("QR Code received (Scan this in WhatsApp):", qr);
     });
 
     return res.status(200).json({
@@ -61,11 +59,17 @@ async function whatsappLoginQrController(req, res) {
 
 async function whatsappPairCodeLoginController(req, res) {
   try {
-    const { number } = req.body;
+    let { number } = req.body;
     if (!number)
       return res
         .status(400)
         .json({ success: false, message: "Phone number is required" });
+
+    // format number by removing + from 91 and any gaps
+    number = number.replace(/\s/g, "");
+    number = number.replace("+91", "");
+    number = "91" + number;
+    console.log("Formatted number:", number);
 
     await ensureClientInitialized();
 
