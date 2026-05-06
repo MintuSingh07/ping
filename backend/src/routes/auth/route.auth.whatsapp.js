@@ -2,7 +2,7 @@ const express = require("express");
 const {
   whatsappLoginQrController,
   whatsappPairCodeLoginController,
-} = require("../../controllers/auth/auth.controller.whatsapp");
+} = require("../../controllers/auth/controller.auth.whatsapp");
 
 const router = express.Router();
 
