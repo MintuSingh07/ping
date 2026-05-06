@@ -17,10 +17,12 @@ const client = new Client({
   },
 });
 
+const qrcode = require("qrcode-terminal");
+const socketService = require("./socket.service");
+
 let isInitialized = false;
 let lastQr = null;
-
-const qrcode = require("qrcode-terminal");
+let messageQueue = [];
 
 // Global event listeners
 client.on("qr", (qr) => {
@@ -32,6 +34,23 @@ client.on("qr", (qr) => {
 client.on("ready", () => {
   console.log("WhatsApp Client is ready!");
   lastQr = null;
+});
+
+client.on("message", (msg) => {
+  console.log("Message received:", msg.body);
+  
+  const messageData = {
+    from: msg.from,
+    body: msg.body,
+    timestamp: new Date(),
+  };
+
+  // 1. Store in memory
+  messageQueue.push(messageData);
+  if (messageQueue.length > 100) messageQueue.shift();
+
+  // 2. Emit via Socket.io for real-time updates
+  socketService.emit("new_message", messageData);
 });
 
 client.on("authenticated", () => {
@@ -72,5 +91,6 @@ module.exports = {
   client,
   initializeWhatsApp,
   getIsInitialized: () => isInitialized,
-  getLastQr: () => lastQr
+  getLastQr: () => lastQr,
+  getMessages: () => messageQueue,
 };
