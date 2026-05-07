@@ -1,35 +1,62 @@
+const qrcode = require("qrcode-terminal");
 const {
   client,
-  getLastQr,
   getIsInitialized,
+  initializeWhatsApp,
 } = require("../../services/whatsapp.service");
 const { formatNumber } = require("../../services/formatnumber");
 
 async function whatsappLoginQrController(req, res) {
   try {
-    const qr = getLastQr();
+    // 1. Check if already connected
+    if (getIsInitialized()) {
+      try {
+        const state = await client.getState();
+        if (state === "CONNECTED") {
+          return res.status(200).json({
+            success: true,
+            authenticated: true,
+            message: "WhatsApp is already connected.",
+          });
+        }
+      } catch (e) {}
+    }
+
+    // 2. Set up a one-time listener for the QR code
+    // This only prints to terminal when THIS API is called
+    const qrPromise = new Promise((resolve) => {
+      client.once("qr", (qr) => {
+        qrcode.generate(qr, { small: true });
+        console.log("QR Code received (Scan this in WhatsApp)");
+        resolve(qr);
+      });
+
+      // If a QR is already pending or we are already initializing,
+      // it will be caught by this 'once' listener when emitted.
+      // We add a timeout so the API doesn't hang forever
+      setTimeout(() => resolve(null), 30000);
+    });
+
+    // 3. Trigger/Ensure initialization
+    await initializeWhatsApp();
+
+    // 4. Wait for the QR to be emitted
+    const qr = await qrPromise;
 
     if (qr) {
       return res.status(200).json({
         success: true,
+        authenticated: false,
         qr: qr,
-        message: "QR code available. Scan it in WhatsApp.",
+        message: "QR code printed in terminal and sent in response.",
       });
     }
 
-    if (getIsInitialized()) {
-      const state = await client.getState();
-      if (state === "CONNECTED") {
-        return res.status(200).json({
-          success: true,
-          message: "WhatsApp is already connected.",
-        });
-      }
-    }
-
-    return res.status(200).json({
+    return res.status(202).json({
       success: true,
-      message: "WhatsApp is initializing. Please wait for the QR code.",
+      authenticated: false,
+      message:
+        "WhatsApp is initializing or already connected. If no QR appeared in terminal, please check server status.",
     });
   } catch (error) {
     console.error("Error during QR login controller:", error);

@@ -1,0 +1,9 @@
+{
+  "ignore": [
+    ".wwebjs_auth/*",
+    ".wwebjs_cache/*",
+    "session.json"
+  ],
+  "ext": "js,json",
+  "delay": "1500"
+}

@@ -1,6 +1,6 @@
 const http = require("http");
 const app = require("./src/app");
-const { initializeWhatsApp } = require("./src/services/whatsapp.service");
+const { initializeWhatsApp, checkSessionExists } = require("./src/services/whatsapp.service");
 const socketService = require("./src/services/socket.service");
 
 const server = http.createServer(app);
@@ -10,25 +10,31 @@ const PORT = process.env.PORT || 8000;
 socketService.initialize(server);
 
 server.listen(PORT, async () => {
-    console.log(`Server is running on port ${PORT}`);
-    
-    // Initialize WhatsApp service on startup
+  console.log(`Server is running on port ${PORT}`);
+
+  // Only initialize on startup if credentials exist
+  if (checkSessionExists()) {
+    console.log("Credentials found. Logging in directly...");
     try {
-        await initializeWhatsApp();
+      await initializeWhatsApp();
     } catch (error) {
-        console.error("Failed to initialize WhatsApp service on startup:", error);
+      console.error("Failed to auto-initialize WhatsApp:", error);
     }
+  } else {
+    console.log("No credentials found. Waiting for /qr API to initialize...");
+  }
 });
 
+
 // Graceful shutdown
-const { client } = require("./src/services/whatsapp.service");
-process.on("SIGINT", async () => {
-    console.log("Shutting down server...");
-    try {
-        await client.destroy();
-        console.log("WhatsApp client destroyed.");
-    } catch (err) {
-        console.error("Error destroying WhatsApp client:", err);
-    }
-    process.exit(0);
-});
+const { closeWhatsApp } = require("./src/services/whatsapp.service");
+const shutdown = async (signal) => {
+  console.log(`Received ${signal}. Cleaning up...`);
+  await closeWhatsApp();
+  process.exit(0);
+};
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGUSR2", () => shutdown("SIGUSR2"));
+
