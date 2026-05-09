@@ -1,7 +1,5 @@
 const {
   client,
-  initializeWhatsApp,
-  getIsInitialized,
 } = require("../../services/whatsapp.service");
 const { formatNumber } = require("../../services/formatnumber");
 
@@ -19,18 +17,6 @@ async function sendMessageController(req, res) {
       return res
         .status(400)
         .json({ success: false, message: "Message content is required" });
-    }
-
-    // 1. Ensure WhatsApp is initialized
-    await initializeWhatsApp();
-
-    // 2. Check if actually connected
-    if (!getIsInitialized()) {
-      return res.status(503).json({
-        success: false,
-        message:
-          "WhatsApp is not connected. Please log in via /auth/login/whatsapp/qr first.",
-      });
     }
 
     const { number: formattedNumber, success } = formatNumber(number);

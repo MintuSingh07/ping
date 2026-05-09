@@ -7,10 +7,19 @@ const client = new Client({
     clientId: "ping-auth",
     dataPath: path.join(__dirname, "../../.wwebjs_auth"),
   }),
+  webVersionCache: {
+    type: "remote",
+    remotePath:
+      "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html",
+  },
   puppeteer: {
     headless: true,
     handleSIGINT: false,
     handleSIGTERM: false,
+    executablePath:
+      process.platform === "darwin"
+        ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        : null,
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
@@ -37,12 +46,15 @@ client.on("ready", () => {
 
 client.on("message", async (msg) => {
   try {
+    if (msg.body == "") return;
     const contact = await msg.getContact();
     console.log(`New message from ${contact.name || msg.from}: ${msg.body}`);
+    console.log("Push Name : ", contact.pushname);
 
     const messageData = {
       whatsapp_id: msg.from,
-      savedName: contact.name || contact.pushname,
+      savedName: contact.name,
+      pushName: contact.pushname,
       body: msg.body,
       timestamp: new Date(),
     };
@@ -57,17 +69,26 @@ client.on("message", async (msg) => {
 });
 
 client.on("authenticated", () => {
-  console.log("WhatsApp Authentication successful");
+  console.log("✅ WhatsApp Authentication successful! Syncing data...");
 });
 
 client.on("auth_failure", (msg) => {
-  console.error("WhatsApp Authentication failed:", msg);
+  console.error("❌ WhatsApp Authentication failed:", msg);
   isInitialized = false;
   initializationPromise = null;
 });
 
+client.on("loading_screen", (percent, message) => {
+  console.log(`⏳ WhatsApp Loading: ${percent}% - ${message}`);
+});
+
+client.on("ready", () => {
+  console.log("🚀 WhatsApp Client is ready!");
+  isInitialized = true;
+});
+
 client.on("disconnected", (msg) => {
-  console.log("WhatsApp Client disconnected:", msg);
+  console.log("🔌 WhatsApp Client disconnected:", msg);
   isInitialized = false;
   initializationPromise = null;
 });
