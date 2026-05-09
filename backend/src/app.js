@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use("/auth", whatsappAuthRouter);
-app.use("/whatsapp", sendMessageRouter);
+app.use("/api/auth", whatsappAuthRouter);
+app.use("/api/whatsapp", sendMessageRouter);
 
 module.exports = app;

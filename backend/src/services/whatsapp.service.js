@@ -10,10 +10,10 @@ const client = new Client({
   webVersionCache: {
     type: "remote",
     remotePath:
-      "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.2412.54.html",
+      "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1039171941-alpha.html",
   },
   puppeteer: {
-    headless: true,
+    headless: false,
     handleSIGINT: false,
     handleSIGTERM: false,
     executablePath:
@@ -39,10 +39,7 @@ let initializationPromise = null;
 let messageQueue = [];
 
 // Global event listeners
-client.on("ready", () => {
-  console.log("WhatsApp Client is ready!");
-  isInitialized = true;
-});
+
 
 client.on("message", async (msg) => {
   try {

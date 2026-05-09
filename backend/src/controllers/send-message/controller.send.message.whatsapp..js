@@ -1,9 +1,9 @@
-const {
-  client,
-} = require("../../services/whatsapp.service");
+const { client } = require("../../services/whatsapp.service");
 const { formatNumber } = require("../../services/formatnumber");
+const { MessageMedia } = require("whatsapp-web.js");
+const { sendMedia } = require("../../services/media.service");
 
-async function sendMessageController(req, res) {
+async function sendMessagePersonalController(req, res) {
   try {
     const { number, message } = req.body;
 
@@ -42,13 +42,12 @@ async function sendMessageController(req, res) {
 
     await client.sendMessage(chatId, message);
 
-
     return res.status(200).json({
       success: true,
       message: "Message sent successfully",
     });
   } catch (error) {
-    console.error("Error during send message controller:", error);
+    console.error("Error during send personal message controller:", error);
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error",
@@ -56,4 +55,71 @@ async function sendMessageController(req, res) {
   }
 }
 
-module.exports = { sendMessageController };
+async function sendMediaPersonalController(req, res) {
+  try {
+    const { number, caption } = req.body;
+    const file = req.file; // From multer middleware
+
+    if (!number) {
+      return res.status(400).json({
+        success: false,
+        message: "Receiver number is required",
+      });
+    }
+
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded or invalid file type",
+      });
+    }
+
+    const { number: formattedNumber, success } = formatNumber(number);
+    if (!success) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid phone number format",
+      });
+    }
+
+    // Check if client is initialized
+    if (!client.pupPage) {
+      return res.status(503).json({
+        success: false,
+        message: "WhatsApp client is not fully initialized. Please wait.",
+      });
+    }
+
+    const chatId = `${formattedNumber}@c.us`;
+
+    console.log(`Sending media (${file.mimetype}) to: ${chatId}`);
+
+    await sendMedia(client, chatId, file, caption);
+
+    return res.status(200).json({
+      success: true,
+      message: "Media file sent successfully",
+      file: {
+        name: file.originalname,
+        type: file.mimetype,
+        size: file.size,
+      },
+    });
+  } catch (error) {
+    console.error("Error in sendMediaController:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "An error occurred while sending media",
+    });
+  }
+}
+
+async function sendMessageGroupController(req, res) {
+  console.log("Groupe Message");
+}
+
+module.exports = {
+  sendMessagePersonalController,
+  sendMessageGroupController,
+  sendMediaPersonalController,
+};

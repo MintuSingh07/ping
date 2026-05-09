@@ -1,6 +1,9 @@
 const http = require("http");
 const app = require("./src/app");
-const { initializeWhatsApp, checkSessionExists } = require("./src/services/whatsapp.service");
+const {
+  initializeWhatsApp,
+  checkSessionExists,
+} = require("./src/services/whatsapp.service");
 const socketService = require("./src/services/socket.service");
 
 const server = http.createServer(app);
@@ -25,7 +28,6 @@ server.listen(PORT, async () => {
   }
 });
 
-
 // Graceful shutdown
 const { closeWhatsApp } = require("./src/services/whatsapp.service");
 const shutdown = async (signal) => {
@@ -37,4 +39,3 @@ const shutdown = async (signal) => {
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGUSR2", () => shutdown("SIGUSR2"));
-

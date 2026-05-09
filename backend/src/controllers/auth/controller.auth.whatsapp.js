@@ -22,8 +22,6 @@ async function whatsappLoginQrController(req, res) {
       } catch (e) {}
     }
 
-    // 2. Set up a one-time listener for the QR code
-    // This only prints to terminal when THIS API is called
     const qrPromise = new Promise((resolve) => {
       client.once("qr", (qr) => {
         qrcode.generate(qr, { small: true });
@@ -31,9 +29,6 @@ async function whatsappLoginQrController(req, res) {
         resolve(qr);
       });
 
-      // If a QR is already pending or we are already initializing,
-      // it will be caught by this 'once' listener when emitted.
-      // We add a timeout so the API doesn't hang forever
       setTimeout(() => resolve(null), 30000);
     });
 
@@ -56,7 +51,7 @@ async function whatsappLoginQrController(req, res) {
       success: true,
       authenticated: false,
       message:
-        "WhatsApp is initializing or already connected. If no QR appeared in terminal, please check server status.",
+        "WhatsApp is initializing or already connected. If no QR appeared in terminal, please check server status",
     });
   } catch (error) {
     console.error("Error during QR login controller:", error);
