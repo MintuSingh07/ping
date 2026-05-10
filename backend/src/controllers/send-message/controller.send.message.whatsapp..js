@@ -1,11 +1,10 @@
 const { client } = require("../../services/whatsapp.service");
 const { formatNumber } = require("../../services/formatnumber");
-const { MessageMedia } = require("whatsapp-web.js");
 const { sendMedia } = require("../../services/media.service");
 
 async function sendMessagePersonalController(req, res) {
   try {
-    const { number, message } = req.body;
+    const { number, message, quotedMessageId } = req.body;
 
     if (!number) {
       return res
@@ -40,7 +39,12 @@ async function sendMessagePersonalController(req, res) {
       ? formattedNumber
       : `${formattedNumber}@c.us`;
 
-    await client.sendMessage(chatId, message);
+    const options = {};
+    if (quotedMessageId) {
+      options.quotedMessageId = quotedMessageId;
+    }
+
+    await client.sendMessage(chatId, message, options);
 
     return res.status(200).json({
       success: true,
@@ -57,7 +61,7 @@ async function sendMessagePersonalController(req, res) {
 
 async function sendMediaPersonalController(req, res) {
   try {
-    const { number, caption } = req.body;
+    const { number, caption, quotedMessageId } = req.body;
     const file = req.file; // From multer middleware
 
     if (!number) {
@@ -94,7 +98,12 @@ async function sendMediaPersonalController(req, res) {
 
     console.log(`Sending media (${file.mimetype}) to: ${chatId}`);
 
-    await sendMedia(client, chatId, file, caption);
+    const options = {};
+    if (quotedMessageId) {
+      options.quotedMessageId = quotedMessageId;
+    }
+
+    await sendMedia(client, chatId, file, caption, quotedMessageId);
 
     return res.status(200).json({
       success: true,

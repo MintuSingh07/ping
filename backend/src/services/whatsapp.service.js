@@ -1,5 +1,12 @@
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const path = require("path");
+const fs = require("fs");
+
+// Ensure cache directory exists
+const cachePath = path.join(__dirname, "../../.wwebjs_cache");
+if (!fs.existsSync(cachePath)) {
+  fs.mkdirSync(cachePath, { recursive: true });
+}
 
 // Initialize client with optimized Puppeteer settings and explicit clientId for persistence
 const client = new Client({
@@ -10,7 +17,8 @@ const client = new Client({
   webVersionCache: {
     type: "remote",
     remotePath:
-      "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1039171941-alpha.html",
+      "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1039181464-alpha.html",
+    path: cachePath,
   },
   puppeteer: {
     headless: false,
@@ -40,16 +48,18 @@ let messageQueue = [];
 
 // Global event listeners
 
-
 client.on("message", async (msg) => {
   try {
-    if (msg.body == "") return;
+    if (msg.body == "" || msg.from === "status@broadcast") return;
     const contact = await msg.getContact();
     console.log(`New message from ${contact.name || msg.from}: ${msg.body}`);
+    console.log(`Message ID: ${msg.id._serialized}`);
     console.log("Push Name : ", contact.pushname);
+    console.log("Message ID : ", msg.id._serialized);
 
     const messageData = {
       whatsapp_id: msg.from,
+      messageId: msg.id._serialized,
       savedName: contact.name,
       pushName: contact.pushname,
       body: msg.body,

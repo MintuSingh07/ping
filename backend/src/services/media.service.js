@@ -1,7 +1,7 @@
 const { MessageMedia } = require("whatsapp-web.js");
 const fs = require("fs");
 
-const sendMedia = async (client, chatId, file, caption = "") => {
+const sendMedia = async (client, chatId, file, caption = "", quotedMessageId = null) => {
   try {
     if (!fs.existsSync(file.path)) {
       throw new Error("File not found on server");
@@ -11,7 +11,8 @@ const sendMedia = async (client, chatId, file, caption = "") => {
     
     await client.sendMessage(chatId, media, { 
       caption: caption || "",
-      sendMediaAsDocument: file.mimetype === "application/pdf" // Send PDFs as documents
+      sendMediaAsDocument: file.mimetype === "application/pdf", // Send PDFs as documents
+      quotedMessageId
     });
 
     // Cleanup: Delete the file from the uploads folder after sending
