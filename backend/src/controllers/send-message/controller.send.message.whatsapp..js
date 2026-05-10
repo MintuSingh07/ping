@@ -39,12 +39,9 @@ async function sendMessagePersonalController(req, res) {
       ? formattedNumber
       : `${formattedNumber}@c.us`;
 
-    const options = {};
-    if (quotedMessageId) {
-      options.quotedMessageId = quotedMessageId;
-    }
-
-    await client.sendMessage(chatId, message, options);
+    await client.sendMessage(chatId, message, {
+      quotedMessageId,
+    });
 
     return res.status(200).json({
       success: true,
