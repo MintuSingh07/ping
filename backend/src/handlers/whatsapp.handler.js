@@ -11,7 +11,14 @@ const registerWhatsAppHandlers = (client, stateManager) => {
 
   client.on("message", async (msg) => {
     try {
-      if ((msg.body === "" && !msg.hasMedia) || msg.from === "status@broadcast") return;
+      if (
+        (msg.body === "" &&
+          !msg.hasMedia &&
+          msg.type != "audio" &&
+          msg.type != "ptt") ||
+        msg.from === "status@broadcast"
+      )
+        return;
 
       const contact = await msg.getContact();
       console.log(`New message from ${contact.name || msg.from}: ${msg.body}`);
@@ -19,13 +26,21 @@ const registerWhatsAppHandlers = (client, stateManager) => {
       console.log("Push Name : ", contact.pushname);
 
       // Check for media and store locally in /uploads
-      if (msg.hasMedia) {
+      if (msg.hasMedia || msg.type == "audio" || msg.type == "ptt") {
         try {
           const media = await msg.downloadMedia();
 
           if (media) {
             const buffer = Buffer.from(media.data, "base64");
-            const filename = `${msg.id._serialized}${media.filename ? `_${media.filename}` : ""}.${media.mimetype.split("/")[1]}`;
+            const cleanMimeType = media.mimetype.split(";")[0];
+            const extension = cleanMimeType.split("/")[1];
+
+            // Avoid double extensions if media.filename already has one
+            const filename =
+              media.filename && media.filename.includes(".")
+                ? `${msg.id._serialized}_${media.filename}`
+                : `${msg.id._serialized}${media.filename ? `_${media.filename}` : ""}.${extension}`;
+
             const filepath = path.join(uploadsPath, filename);
             fs.writeFileSync(filepath, buffer);
           }
