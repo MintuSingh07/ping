@@ -40,65 +40,26 @@ const client = new Client({
   },
 });
 
-const socketService = require("./socket.service");
+const registerWhatsAppHandlers = require("../handlers/whatsapp.handler");
 
 let isInitialized = false;
 let initializationPromise = null;
 let messageQueue = [];
 
-// Global event listeners
-
-client.on("message", async (msg) => {
-  try {
-    if (msg.body == "" || msg.from === "status@broadcast") return;
-    const contact = await msg.getContact();
-    console.log(`New message from ${contact.name || msg.from}: ${msg.body}`);
-    console.log(`Message ID: ${msg.id._serialized}`);
-    console.log("Push Name : ", contact.pushname);
-    console.log("Message ID : ", msg.id._serialized);
-
-    const messageData = {
-      whatsapp_id: msg.from,
-      messageId: msg.id._serialized,
-      savedName: contact.name,
-      pushName: contact.pushname,
-      body: msg.body,
-      timestamp: new Date(),
-    };
-
+// Initialize state manager to pass to handlers
+const stateManager = {
+  setInitialized: (val) => {
+    isInitialized = val;
+    if (!val) initializationPromise = null;
+  },
+  addMessage: (messageData) => {
     messageQueue.push(messageData);
     if (messageQueue.length > 100) messageQueue.shift();
+  },
+};
 
-    socketService.emit("new_message", messageData);
-  } catch (err) {
-    console.error("Error in message listener:", err);
-  }
-});
-
-client.on("authenticated", () => {
-  console.log("✅ WhatsApp Authentication successful! Syncing data...");
-});
-
-client.on("auth_failure", (msg) => {
-  console.error("❌ WhatsApp Authentication failed:", msg);
-  isInitialized = false;
-  initializationPromise = null;
-});
-
-client.on("loading_screen", (percent, message) => {
-  console.log(`⏳ WhatsApp Loading: ${percent}% - ${message}`);
-});
-
-client.on("ready", () => {
-  console.log("🚀 WhatsApp Client is ready!");
-  isInitialized = true;
-});
-
-client.on("disconnected", (msg) => {
-  console.log("🔌 WhatsApp Client disconnected:", msg);
-  isInitialized = false;
-  initializationPromise = null;
-});
+// Register all event handlers
+registerWhatsAppHandlers(client, stateManager);
 
 // Helper function to initialize the client with concurrency protection
 const initializeWhatsApp = async () => {
