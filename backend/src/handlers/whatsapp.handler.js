@@ -12,11 +12,12 @@ const registerWhatsAppHandlers = (client, stateManager) => {
   client.on("message", async (msg) => {
     try {
       if (
-        (msg.body === "" &&
-          !msg.hasMedia &&
-          msg.type != "audio" &&
-          msg.type != "ptt") ||
-        msg.from === "status@broadcast"
+        msg.body === "" ||
+        !msg.hasMedia ||
+        msg.type != "audio" ||
+        msg.type != "ptt" ||
+        msg.from === "status@broadcast" ||
+        msg.from.includes("@newsletter")
       )
         return;
 

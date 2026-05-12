@@ -1,5 +1,5 @@
 const voiceToTextService = require("../../services/voiceToText.service");
-
+const SummarizeService = require("../../services/summarize.service");
 async function summarizeVoiceController(req, res) {
   //send file name only
   const { filename } = req.body;
@@ -20,7 +20,7 @@ async function summarizeVoiceController(req, res) {
 async function summarizeTextController(req, res) {
   try {
     const { text } = req.body;
-    const summary = await voiceToTextService.summarizeText(text);
+    const summary = await SummarizeService.summarizeText(text);
     res.status(200).json({ summary });
   } catch (error) {
     res.status(500).json({ error: error.message });
