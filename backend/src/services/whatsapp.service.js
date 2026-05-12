@@ -21,7 +21,7 @@ const client = new Client({
     path: cachePath,
   },
   puppeteer: {
-    headless: true,
+    headless: false,
     handleSIGINT: false,
     handleSIGTERM: false,
     executablePath:

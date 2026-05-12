@@ -24,7 +24,7 @@ class SummarizeService {
                 
                 Summarize the transcript clearly. 
                 
-                Keep it concise.
+                Keep it concise. Don't add any extra information.
               `,
           },
           {
@@ -33,7 +33,7 @@ class SummarizeService {
           },
         ],
 
-        temperature: 0.3,
+        temperature: 0,
       });
 
       return response.choices[0].message.content;

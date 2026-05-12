@@ -41,6 +41,7 @@ const registerWhatsAppHandlers = (client, stateManager) => {
                 ? `${msg.id._serialized}_${media.filename}`
                 : `${msg.id._serialized}${media.filename ? `_${media.filename}` : ""}.${extension}`;
 
+            console.log("Filename is: ", filename);
             const filepath = path.join(uploadsPath, filename);
             fs.writeFileSync(filepath, buffer);
           }

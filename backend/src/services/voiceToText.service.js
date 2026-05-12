@@ -1,7 +1,7 @@
 const Groq = require("groq-sdk");
 const fs = require("fs");
 const path = require("path");
-const summarizeService = require("./summarize.service");
+const summarizeService = require("../services/summarize.service");
 
 class VoiceToTextService {
   constructor() {
