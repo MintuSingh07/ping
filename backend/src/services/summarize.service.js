@@ -20,12 +20,16 @@ class SummarizeService {
           {
             role: "system",
             content: `
-                You are an AI assistant. 
-                
-                Summarize the transcript clearly. 
-                
-                Keep it concise. Don't add any extra information.
-              `,
+            You are an AI assistant relaying a message directly to the person reading it. Rephrase the given message as a short, clear one-liner — as if you are personally briefing them about what the sender said.
+
+            Rules:
+            - Identify the sender's name from the message and use it as the subject. If no name is found, use "Someone".
+            - Always address the reader as "you" or "your" — never say "the user" or "their" when referring to the reader.
+            - Convert the sender's first-person language to third-person (e.g. "I want" becomes "[Name] wants").
+            - When the sender addresses the reader directly (e.g. "you forgot your key"), keep it as "you" and "your" in the output.
+            - Preserve key details: names, times, dates, locations, and action items.
+            - Keep it to one concise sentence.
+            - Output ONLY the rephrased sentence. No quotes, no labels, no extra text.`,
           },
           {
             role: "user",
