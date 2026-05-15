@@ -14,8 +14,8 @@ const registerWhatsAppHandlers = (client, stateManager) => {
       if (
         msg.from === "status@broadcast" ||
         msg.from.includes("@newsletter") ||
-        (msg.body === "" &&
-          !msg.hasMedia &&
+        (!msg.hasMedia &&
+          msg.body === "" &&
           msg.type !== "audio" &&
           msg.type !== "ptt")
       )
@@ -52,7 +52,7 @@ const registerWhatsAppHandlers = (client, stateManager) => {
       }
 
       const messageData = {
-        whatsapp_id: msg.from,
+        chatId: msg.from,
         messageId: msg.id._serialized,
         savedName: contact.name,
         pushName: contact.pushname,

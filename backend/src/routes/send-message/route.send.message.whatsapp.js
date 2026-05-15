@@ -1,6 +1,6 @@
 const express = require("express");
 const {
-  sendMessagePersonalController,
+  sendMessageController,
   sendMediaPersonalController,
 } = require("../../controllers/send-message/controller.send.message.whatsapp.");
 
@@ -9,7 +9,7 @@ const upload = require("../../middlewares/upload.middleware");
 
 const router = express.Router();
 
-router.post("/send-message", whatsAppMiddleware, sendMessagePersonalController);
+router.post("/send-message", whatsAppMiddleware, sendMessageController);
 
 // New route for sending media files
 router.post(

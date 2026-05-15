@@ -10,6 +10,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Whatsapp Controls
 app.use("/api/auth", whatsappAuthRouter);
 app.use("/api/whatsapp", sendMessageRouter);
 app.use("/api/service", serviceRouter);

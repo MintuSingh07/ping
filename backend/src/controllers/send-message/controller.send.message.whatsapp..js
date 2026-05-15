@@ -2,14 +2,21 @@ const { client } = require("../../services/whatsapp.service");
 const { formatNumber } = require("../../services/formatnumber");
 const { sendMedia } = require("../../services/media.service");
 
-async function sendMessagePersonalController(req, res) {
+async function sendMessageController(req, res) {
   try {
-    const { number, message, quotedMessageId } = req.body;
+    const { chatId, message, quotedMessageId } = req.body;
 
-    if (!number) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Number is required" });
+    // if (!number) {
+    //   return res
+    //     .status(400)
+    //     .json({ success: false, message: "Number is required" });
+    // }
+
+    if (!chatId) {
+      return res.status(400).json({
+        success: false,
+        message: "Sender ID is required",
+      });
     }
 
     if (!message) {
@@ -18,14 +25,14 @@ async function sendMessagePersonalController(req, res) {
         .json({ success: false, message: "Message content is required" });
     }
 
-    const { number: formattedNumber, success } = formatNumber(number);
-    if (!success) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid phone number" });
-    }
+    // const { number: formattedNumber, success } = formatNumber(number);
+    // if (!success) {
+    //   return res
+    //     .status(400)
+    //     .json({ success: false, message: "Invalid phone number" });
+    // }
 
-    console.log(`Sending message to: ${formattedNumber}`);
+    // console.log(`Sending message to: ${formattedNumber}`);
 
     // Ensure the browser page is ready
     if (!client.pupPage) {
@@ -35,9 +42,9 @@ async function sendMessagePersonalController(req, res) {
     }
 
     // Format as JID for whatsapp-web.js
-    const chatId = formattedNumber.includes("@c.us")
-      ? formattedNumber
-      : `${formattedNumber}@c.us`;
+    // const chatId = formattedNumber.includes("@c.us")
+    //   ? formattedNumber
+    //   : `${formattedNumber}@c.us`;
 
     await client.sendMessage(chatId, message, {
       quotedMessageId,
@@ -58,10 +65,10 @@ async function sendMessagePersonalController(req, res) {
 
 async function sendMediaPersonalController(req, res) {
   try {
-    const { number, caption, quotedMessageId } = req.body;
+    const { chatId, caption } = req.body;
     const file = req.file; // From multer middleware
 
-    if (!number) {
+    if (!chatId) {
       return res.status(400).json({
         success: false,
         message: "Receiver number is required",
@@ -75,14 +82,6 @@ async function sendMediaPersonalController(req, res) {
       });
     }
 
-    const { number: formattedNumber, success } = formatNumber(number);
-    if (!success) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid phone number format",
-      });
-    }
-
     // Check if client is initialized
     if (!client.pupPage) {
       return res.status(503).json({
@@ -91,16 +90,9 @@ async function sendMediaPersonalController(req, res) {
       });
     }
 
-    const chatId = `${formattedNumber}@c.us`;
-
     console.log(`Sending media (${file.mimetype}) to: ${chatId}`);
 
-    const options = {};
-    if (quotedMessageId) {
-      options.quotedMessageId = quotedMessageId;
-    }
-
-    await sendMedia(client, chatId, file, caption, quotedMessageId);
+    await sendMedia(client, chatId, file, caption);
 
     return res.status(200).json({
       success: true,
@@ -120,12 +112,7 @@ async function sendMediaPersonalController(req, res) {
   }
 }
 
-async function sendMessageGroupController(req, res) {
-  console.log("Groupe Message");
-}
-
 module.exports = {
-  sendMessagePersonalController,
-  sendMessageGroupController,
+  sendMessageController,
   sendMediaPersonalController,
 };
