@@ -1,17 +1,17 @@
-const qrcode = require("qrcode-terminal");
+
 const {
   getClient,
   getIsInitialized,
   initializeWhatsApp,
   getOrCreateClientState,
-} = require("../../services/whatsapp.service");
+} = require("../../services/whatsapp/whatsapp.service");
 const { formatNumber } = require("../../services/formatnumber");
 
 async function whatsappLoginQrController(req, res) {
   try {
     // TODO: Extract userId from your SWT Auth Middleware once built
     // For now, we fallback to req.body.userId or headers
-    const userId = req.user?.id || req.body?.userId || req.headers["x-user-id"];
+    const userId = req.headers["x-user-id"];
     
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized. userId is required." });
@@ -36,11 +36,18 @@ async function whatsappLoginQrController(req, res) {
     const state = getOrCreateClientState(userId);
     const client = state.client;
 
+    if (state.qr) {
+      return res.status(200).json({
+        success: true,
+        authenticated: false,
+        qr: state.qr,
+        message: "QR code returned from active session state.",
+      });
+    }
+
     const qrPromise = new Promise((resolve) => {
       const onQr = (qr) => {
         cleanup();
-        qrcode.generate(qr, { small: true });
-        console.log(`[User ${userId}] QR Code received (Scan this in WhatsApp)`);
         resolve(qr);
       };
       
@@ -81,7 +88,7 @@ async function whatsappLoginQrController(req, res) {
         success: true,
         authenticated: false,
         qr: qr,
-        message: "QR code printed in terminal and sent in response.",
+        message: "QR code generated and sent in response.",
       });
     }
 

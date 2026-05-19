@@ -1,7 +1,7 @@
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const path = require("path");
 const fs = require("fs");
-const registerWhatsAppHandlers = require("../handlers/whatsapp.handler");
+const registerWhatsAppHandlers = require("../../handlers/whatsapp/whatsapp.handler");
 
 // Ensure cache and auth directories exist
 const cachePath = path.join(__dirname, "../../.wwebjs_cache");
@@ -61,6 +61,7 @@ const getOrCreateClientState = (userId) => {
     isInitialized: false,
     initializationPromise: null,
     messageQueue: [],
+    qr: null,
   };
 
   const stateManager = {
@@ -87,7 +88,11 @@ const getOrCreateClientState = (userId) => {
           }
         }
       }
-    }
+    },
+    setQr: (qrCode) => {
+      state.qr = qrCode;
+    },
+    getQr: () => state.qr,
   };
 
   // Register all event handlers for this specific client

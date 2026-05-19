@@ -1,7 +1,7 @@
 const express = require("express");
 require("dotenv").config();
-const whatsappAuthRouter = require("./routes/auth/route.auth.whatsapp");
-const sendMessageRouter = require("./routes/send-message/route.send.message.whatsapp");
+const whatsappAuthRouter = require("./routes/whatsapp/auth.route");
+const sendMessageRouter = require("./routes/whatsapp/message.route");
 const serviceRouter = require("./routes/service-route/route.service");
 const app = express();
 const cors = require("cors");

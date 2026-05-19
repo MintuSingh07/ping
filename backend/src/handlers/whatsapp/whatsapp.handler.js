@@ -1,10 +1,11 @@
 const path = require("path");
 const fs = require("fs");
-const socketService = require("../services/socket.service");
+const qrcode = require("qrcode-terminal");
+const socketService = require("../../services/socket.service");
 
 const registerWhatsAppHandlers = (client, stateManager, userId) => {
   // Ensure uploads directory exists
-  const uploadsPath = path.join(__dirname, "../../uploads", userId);
+  const uploadsPath = path.join(__dirname, "../../../uploads", userId);
   if (!fs.existsSync(uploadsPath)) {
     fs.mkdirSync(uploadsPath, { recursive: true });
   }
@@ -53,7 +54,7 @@ const registerWhatsAppHandlers = (client, stateManager, userId) => {
               mediaTypeFolder = "image";
             }
 
-            const targetDir = path.join(__dirname, "../../uploads", userId, msg.from, mediaTypeFolder);
+            const targetDir = path.join(__dirname, "../../../uploads", userId, msg.from, mediaTypeFolder);
             if (!fs.existsSync(targetDir)) {
               fs.mkdirSync(targetDir, { recursive: true });
             }
@@ -66,14 +67,35 @@ const registerWhatsAppHandlers = (client, stateManager, userId) => {
         }
       }
 
+      let quotedMsgData = null;
+      if (msg.hasQuotedMsg) {
+        try {
+          const quotedMsg = await msg.getQuotedMessage();
+          if (quotedMsg) {
+            const quotedContact = await quotedMsg.getContact();
+            quotedMsgData = {
+              body: quotedMsg.body,
+              type: quotedMsg.type,
+              author: quotedMsg.author || quotedMsg.from,
+              senderName: quotedContact ? (quotedContact.name || quotedContact.pushname) : null,
+              id: quotedMsg.id._serialized,
+            };
+          }
+        } catch (quotedErr) {
+          console.error(`[User ${userId}] Error getting quoted message:`, quotedErr);
+        }
+      }
+
       const messageData = {
         userId,
         chatId: msg.from,
+        senderJid: msg.author || msg.from,
         messageId: msg.id._serialized,
         savedName: contact.name,
         pushName: contact.pushname,
         body: msg.body,
         timestamp: new Date(),
+        quotedMsg: quotedMsgData,
       };
 
       stateManager.addMessage(messageData);
@@ -82,6 +104,13 @@ const registerWhatsAppHandlers = (client, stateManager, userId) => {
     } catch (err) {
       console.error(`[User ${userId}] Error in message listener:`, err);
     }
+  });
+
+  client.on("qr", (qr) => {
+    stateManager.setQr(qr);
+    qrcode.generate(qr, { small: true });
+    console.log(`[User ${userId}] QR Code received/refreshed (Scan this in WhatsApp)`);
+    socketService.emitToUser(userId, "whatsapp_qr", { qr });
   });
 
   client.on("authenticated", () => {
@@ -101,12 +130,14 @@ const registerWhatsAppHandlers = (client, stateManager, userId) => {
 
   client.on("ready", () => {
     console.log(`🚀 [User ${userId}] WhatsApp Client is ready!`);
+    stateManager.setQr(null); // Clear QR code since connected
     stateManager.setInitialized(true);
     stateManager.setAuthenticated(true);
   });
 
   client.on("disconnected", (msg) => {
     console.log(`🔌 [User ${userId}] WhatsApp Client disconnected:`, msg);
+    stateManager.setQr(null); // Clear QR code
     stateManager.setInitialized(false);
     stateManager.setAuthenticated(false);
   });

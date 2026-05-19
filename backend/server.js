@@ -4,7 +4,7 @@ const {
   initializeWhatsApp,
   getAllExistingSessions,
   closeAllClients
-} = require("./src/services/whatsapp.service");
+} = require("./src/services/whatsapp/whatsapp.service");
 const socketService = require("./src/services/socket.service");
 
 const server = http.createServer(app);

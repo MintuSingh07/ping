@@ -1,7 +1,7 @@
 const {
   getIsInitialized,
   initializeWhatsApp,
-} = require("../services/whatsapp.service");
+} = require("../../services/whatsapp/whatsapp.service");
 
 async function whatsAppMiddleware(req, res, next) {
   try {

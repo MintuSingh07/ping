@@ -1,5 +1,5 @@
-const { getClient } = require("../../services/whatsapp.service");
-const { sendMedia } = require("../../services/media.service");
+const { getClient } = require("../../services/whatsapp/whatsapp.service");
+const { sendMedia } = require("../../services/whatsapp/media.service");
 
 async function sendMessageController(req, res) {
   try {

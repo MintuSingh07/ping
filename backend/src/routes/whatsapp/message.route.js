@@ -2,9 +2,9 @@ const express = require("express");
 const {
   sendMessageController,
   sendMediaPersonalController,
-} = require("../../controllers/send-message/controller.send.message.whatsapp.");
+} = require("../../controllers/whatsapp/message.controller");
 
-const whatsAppMiddleware = require("../../middlewares/whatsapp.middleware");
+const whatsAppMiddleware = require("../../middlewares/whatsapp/whatsapp.middleware");
 const upload = require("../../middlewares/upload.middleware");
 
 const router = express.Router();
