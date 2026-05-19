@@ -16,10 +16,43 @@ class VoiceToTextService {
     this.uploadsDir = path.join(__dirname, "../../uploads");
   }
 
-  async transcribeAudio(fileName) {
-    const filePath = path.join(this.uploadsDir, fileName);
+  findFileRecursively(dir, fileName) {
+    if (!fs.existsSync(dir)) return null;
+    const files = fs.readdirSync(dir);
+    for (const file of files) {
+      const fullPath = path.join(dir, file);
+      const stat = fs.statSync(fullPath);
+      if (stat.isDirectory()) {
+        const found = this.findFileRecursively(fullPath, fileName);
+        if (found) return found;
+      } else if (file === fileName) {
+        return fullPath;
+      }
+    }
+    return null;
+  }
 
-    if (!fs.existsSync(filePath)) {
+  async transcribeAudio(fileName) {
+    let filePath = "";
+
+    // 1. Check if it is an absolute path and exists
+    if (path.isAbsolute(fileName) && fs.existsSync(fileName)) {
+      filePath = fileName;
+    } else {
+      // 2. Check if it exists directly under uploadsDir
+      const directPath = path.join(this.uploadsDir, fileName);
+      if (fs.existsSync(directPath)) {
+        filePath = directPath;
+      } else {
+        // 3. Search recursively under uploadsDir
+        const foundPath = this.findFileRecursively(this.uploadsDir, fileName);
+        if (foundPath) {
+          filePath = foundPath;
+        }
+      }
+    }
+
+    if (!filePath || !fs.existsSync(filePath)) {
       throw new Error(`File not found: ${fileName}`);
     }
 

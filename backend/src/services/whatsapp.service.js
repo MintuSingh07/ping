@@ -1,116 +1,220 @@
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const path = require("path");
 const fs = require("fs");
+const registerWhatsAppHandlers = require("../handlers/whatsapp.handler");
 
-// Ensure cache directory exists
+// Ensure cache and auth directories exist
 const cachePath = path.join(__dirname, "../../.wwebjs_cache");
+const authPath = path.join(__dirname, "../../.wwebjs_auth");
+
 if (!fs.existsSync(cachePath)) {
   fs.mkdirSync(cachePath, { recursive: true });
 }
+if (!fs.existsSync(authPath)) {
+  fs.mkdirSync(authPath, { recursive: true });
+}
 
-// Initialize client with optimized Puppeteer settings and explicit clientId for persistence
-const client = new Client({
-  authStrategy: new LocalAuth({
-    clientId: "ping-auth",
-    dataPath: path.join(__dirname, "../../.wwebjs_auth"),
-  }),
-  webVersionCache: {
-    type: "remote",
-    remotePath:
-      "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1039181464-alpha.html",
-    path: cachePath,
-  },
-  puppeteer: {
-    headless: false,
-    handleSIGINT: false,
-    handleSIGTERM: false,
-    executablePath:
-      process.platform === "darwin"
-        ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-        : null,
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-accelerated-2d-canvas",
-      "--no-first-run",
-      "--no-zygote",
-      "--disable-gpu",
-    ],
-  },
-});
+// Global registry for clients and their state
+const clients = new Map();
 
-const registerWhatsAppHandlers = require("../handlers/whatsapp.handler");
+/**
+ * Get or create a client state manager for a specific user
+ */
+const getOrCreateClientState = (userId) => {
+  if (clients.has(userId)) {
+    return clients.get(userId);
+  }
 
-let isInitialized = false;
-let initializationPromise = null;
-let messageQueue = [];
+  const client = new Client({
+    authStrategy: new LocalAuth({
+      clientId: userId, // UNIQUE FOLDER PER USER
+      dataPath: authPath,
+    }),
+    webVersionCache: {
+      type: "remote",
+      remotePath:
+        "https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1039181464-alpha.html",
+      path: cachePath,
+    },
+    puppeteer: {
+      headless: false,
+      handleSIGINT: false,
+      handleSIGTERM: false,
+      executablePath:
+        process.platform === "darwin"
+          ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          : null,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--no-first-run",
+        "--no-zygote",
+        "--disable-gpu",
+      ],
+    },
+  });
 
-// Initialize state manager to pass to handlers
-const stateManager = {
-  setInitialized: (val) => {
-    isInitialized = val;
-    if (!val) initializationPromise = null;
-  },
-  addMessage: (messageData) => {
-    messageQueue.push(messageData);
-    if (messageQueue.length > 100) messageQueue.shift();
-  },
+  const state = {
+    client,
+    isInitialized: false,
+    initializationPromise: null,
+    messageQueue: [],
+  };
+
+  const stateManager = {
+    setInitialized: (val) => {
+      state.isInitialized = val;
+      if (!val) state.initializationPromise = null;
+    },
+    addMessage: (messageData) => {
+      state.messageQueue.push(messageData);
+      if (state.messageQueue.length > 100) state.messageQueue.shift();
+    },
+    getIsInitialized: () => state.isInitialized,
+    getMessages: () => state.messageQueue,
+    setAuthenticated: (isAuthenticated) => {
+      const authFile = path.join(authPath, `session-${userId}.authenticated`);
+      if (isAuthenticated) {
+        fs.writeFileSync(authFile, "true");
+      } else {
+        if (fs.existsSync(authFile)) {
+          try {
+            fs.unlinkSync(authFile);
+          } catch (e) {
+            console.error(`Failed to delete session file for user ${userId}:`, e);
+          }
+        }
+      }
+    }
+  };
+
+  // Register all event handlers for this specific client
+  registerWhatsAppHandlers(client, stateManager, userId);
+
+  clients.set(userId, state);
+  return state;
 };
 
-// Register all event handlers
-registerWhatsAppHandlers(client, stateManager);
+/**
+ * Helper function to initialize the client with concurrency protection
+ */
+const initializeWhatsApp = async (userId) => {
+  const state = getOrCreateClientState(userId);
 
-// Helper function to initialize the client with concurrency protection
-const initializeWhatsApp = async () => {
-  if (isInitialized) return true;
-  if (initializationPromise) return initializationPromise;
+  if (state.isInitialized) return true;
+  if (state.initializationPromise) return state.initializationPromise;
 
-  initializationPromise = (async () => {
-    console.log("Initializing WhatsApp client...");
+  state.initializationPromise = (async () => {
+    console.log(`Initializing WhatsApp client for user: ${userId}...`);
     try {
-      await client.initialize();
+      await state.client.initialize();
       return true;
     } catch (error) {
-      console.error("WhatsApp initialization error:", error);
-      initializationPromise = null;
+      console.error(`WhatsApp initialization error for ${userId}:`, error);
+      state.initializationPromise = null;
       throw error;
     }
   })();
 
-  return initializationPromise;
+  return state.initializationPromise;
 };
 
-// Graceful shutdown function
-const closeWhatsApp = async () => {
-  try {
-    await client.destroy();
-    isInitialized = false;
-    initializationPromise = null;
-  } catch (err) {}
+/**
+ * Graceful shutdown function for a specific user
+ */
+const closeWhatsApp = async (userId) => {
+  if (clients.has(userId)) {
+    const state = clients.get(userId);
+    try {
+      await state.client.destroy();
+      state.isInitialized = false;
+      state.initializationPromise = null;
+      clients.delete(userId);
+      console.log(`Closed WhatsApp client for user: ${userId}`);
+    } catch (err) {
+      console.error(`Error closing client for ${userId}:`, err);
+    }
+  }
 };
 
-// Exporting the client, initialization function, and state
-// Helper function to check if a session already exists
-const checkSessionExists = () => {
-  const sessionPath = path.join(
-    __dirname,
-    "../../.wwebjs_auth/session-ping-auth",
-  );
-  // A valid session usually has a "Default" or "lock" file inside it
+/**
+ * Close all active clients (useful for server shutdown)
+ */
+const closeAllClients = async () => {
+  for (const userId of clients.keys()) {
+    await closeWhatsApp(userId);
+  }
+};
+
+/**
+ * Helper function to check if a session already exists for a user
+ */
+const checkSessionExists = (userId) => {
+  const sessionPath = path.join(authPath, `session-${userId}`);
+  const authFile = path.join(authPath, `session-${userId}.authenticated`);
   try {
-    const fs = require("fs");
-    return fs.existsSync(sessionPath) && fs.readdirSync(sessionPath).length > 0;
+    return fs.existsSync(sessionPath) && fs.existsSync(authFile);
   } catch (e) {
     return false;
   }
 };
 
+/**
+ * Return all existing session IDs from the file system
+ */
+const getAllExistingSessions = () => {
+  try {
+    if (!fs.existsSync(authPath)) return { authenticated: [], unauthenticated: [] };
+    const files = fs.readdirSync(authPath);
+    
+    // Filter folders starting with 'session-' (excluding the .authenticated files themselves)
+    const sessionFolders = files.filter(f => 
+      f.startsWith('session-') && 
+      !f.endsWith('.authenticated') && 
+      fs.statSync(path.join(authPath, f)).isDirectory()
+    );
+    
+    const authenticated = [];
+    const unauthenticated = [];
+    
+    for (const folder of sessionFolders) {
+      const userId = folder.replace('session-', '');
+      const authFile = `session-${userId}.authenticated`;
+      if (files.includes(authFile)) {
+        authenticated.push(userId);
+      } else {
+        unauthenticated.push(userId);
+      }
+    }
+    
+    return { authenticated, unauthenticated };
+  } catch (e) {
+    return { authenticated: [], unauthenticated: [] };
+  }
+};
+
+/**
+ * Expose client access
+ */
+const getClient = (userId) => {
+  if (!clients.has(userId)) return null;
+  return clients.get(userId).client;
+};
+
+const getIsInitialized = (userId) => {
+  if (!clients.has(userId)) return false;
+  return clients.get(userId).isInitialized;
+};
+
 module.exports = {
-  client,
   initializeWhatsApp,
   closeWhatsApp,
+  closeAllClients,
   checkSessionExists,
-  getIsInitialized: () => isInitialized,
-  getMessages: () => messageQueue,
+  getAllExistingSessions,
+  getClient,
+  getIsInitialized,
+  getOrCreateClientState
 };

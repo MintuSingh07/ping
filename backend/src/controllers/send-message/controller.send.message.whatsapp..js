@@ -1,16 +1,19 @@
-const { client } = require("../../services/whatsapp.service");
-const { formatNumber } = require("../../services/formatnumber");
+const { getClient } = require("../../services/whatsapp.service");
 const { sendMedia } = require("../../services/media.service");
 
 async function sendMessageController(req, res) {
   try {
-    const { chatId, message, quotedMessageId } = req.body;
+    const userId = req.currentUserId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized. userId is required." });
+    }
 
-    // if (!number) {
-    //   return res
-    //     .status(400)
-    //     .json({ success: false, message: "Number is required" });
-    // }
+    const client = getClient(userId);
+    if (!client) {
+      return res.status(404).json({ success: false, message: "WhatsApp client not found for this user. Please login first." });
+    }
+
+    const { chatId, message, quotedMessageId } = req.body;
 
     if (!chatId) {
       return res.status(400).json({
@@ -25,26 +28,12 @@ async function sendMessageController(req, res) {
         .json({ success: false, message: "Message content is required" });
     }
 
-    // const { number: formattedNumber, success } = formatNumber(number);
-    // if (!success) {
-    //   return res
-    //     .status(400)
-    //     .json({ success: false, message: "Invalid phone number" });
-    // }
-
-    // console.log(`Sending message to: ${formattedNumber}`);
-
     // Ensure the browser page is ready
     if (!client.pupPage) {
       throw new Error(
         "WhatsApp browser page not ready. Please try again in a moment.",
       );
     }
-
-    // Format as JID for whatsapp-web.js
-    // const chatId = formattedNumber.includes("@c.us")
-    //   ? formattedNumber
-    //   : `${formattedNumber}@c.us`;
 
     await client.sendMessage(chatId, message, {
       quotedMessageId,
@@ -65,6 +54,16 @@ async function sendMessageController(req, res) {
 
 async function sendMediaPersonalController(req, res) {
   try {
+    const userId = req.currentUserId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized. userId is required." });
+    }
+
+    const client = getClient(userId);
+    if (!client) {
+      return res.status(404).json({ success: false, message: "WhatsApp client not found for this user. Please login first." });
+    }
+
     const { chatId, caption } = req.body;
     const file = req.file; // From multer middleware
 

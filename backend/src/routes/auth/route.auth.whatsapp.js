@@ -6,6 +6,6 @@ const {
 
 const router = express.Router();
 
-router.get("/login/whatsapp/qr", whatsappLoginQrController);
+router.post("/login/whatsapp/qr", whatsappLoginQrController);
 router.post("/login/whatsapp/pair-code", whatsappPairCodeLoginController);
 module.exports = router;

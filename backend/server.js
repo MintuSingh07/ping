@@ -2,7 +2,8 @@ const http = require("http");
 const app = require("./src/app");
 const {
   initializeWhatsApp,
-  checkSessionExists,
+  getAllExistingSessions,
+  closeAllClients
 } = require("./src/services/whatsapp.service");
 const socketService = require("./src/services/socket.service");
 
@@ -15,24 +16,33 @@ socketService.initialize(server);
 server.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
 
-  // Only initialize on startup if credentials exist
-  if (checkSessionExists()) {
-    console.log("Credentials found. Logging in directly...");
-    try {
-      await initializeWhatsApp();
-    } catch (error) {
-      console.error("Failed to auto-initialize WhatsApp:", error);
+  // Auto-initialize only authenticated existing sessions
+  const { authenticated, unauthenticated } = getAllExistingSessions();
+
+  if (unauthenticated.length > 0) {
+    for (const userId of unauthenticated) {
+      console.log(`[-] Credentials not found for user "${userId}". You are not logged in with WhatsApp.`);
+    }
+  }
+  
+  if (authenticated.length > 0) {
+    console.log(`[+] Found ${authenticated.length} authenticated session(s). Initializing...`);
+    for (const userId of authenticated) {
+      try {
+        await initializeWhatsApp(userId);
+      } catch (error) {
+        console.error(`Failed to auto-initialize WhatsApp for user ${userId}:`, error);
+      }
     }
   } else {
-    console.log("No credentials found. Waiting for /qr API to initialize...");
+    console.log("[*] No active sessions found to auto-login. Waiting for /qr API to initialize clients...");
   }
 });
 
 // Graceful shutdown
-const { closeWhatsApp } = require("./src/services/whatsapp.service");
 const shutdown = async (signal) => {
-  console.log(`Received ${signal}. Cleaning up...`);
-  await closeWhatsApp();
+  console.log(`Received ${signal}. Cleaning up all clients...`);
+  await closeAllClients();
   process.exit(0);
 };
 

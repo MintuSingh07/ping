@@ -1,41 +1,79 @@
 const qrcode = require("qrcode-terminal");
 const {
-  client,
+  getClient,
   getIsInitialized,
   initializeWhatsApp,
+  getOrCreateClientState,
 } = require("../../services/whatsapp.service");
 const { formatNumber } = require("../../services/formatnumber");
 
 async function whatsappLoginQrController(req, res) {
   try {
-    // 1. Check if already connected
-    if (getIsInitialized()) {
+    // TODO: Extract userId from your SWT Auth Middleware once built
+    // For now, we fallback to req.body.userId or headers
+    const userId = req.user?.id || req.body?.userId || req.headers["x-user-id"];
+    
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized. userId is required." });
+    }
+
+    // 1. Check if already connected for THIS user
+    if (getIsInitialized(userId)) {
       try {
+        const client = getClient(userId);
         const state = await client.getState();
         if (state === "CONNECTED") {
           return res.status(200).json({
             success: true,
             authenticated: true,
-            message: "WhatsApp is already connected.",
+            message: "WhatsApp is already connected for this user.",
           });
         }
       } catch (e) {}
     }
 
-    const qrPromise = new Promise((resolve) => {
-      client.once("qr", (qr) => {
-        qrcode.generate(qr, { small: true });
-        console.log("QR Code received (Scan this in WhatsApp)");
-        resolve(qr);
-      });
+    // 3. Trigger/Ensure initialization for THIS user
+    const state = getOrCreateClientState(userId);
+    const client = state.client;
 
-      setTimeout(() => resolve(null), 30000);
+    const qrPromise = new Promise((resolve) => {
+      const onQr = (qr) => {
+        cleanup();
+        qrcode.generate(qr, { small: true });
+        console.log(`[User ${userId}] QR Code received (Scan this in WhatsApp)`);
+        resolve(qr);
+      };
+      
+      const onReady = () => {
+        cleanup();
+        resolve(null);
+      };
+      
+      const onAuthFailure = () => {
+        cleanup();
+        resolve(null);
+      };
+
+      const cleanup = () => {
+        client.off("qr", onQr);
+        client.off("ready", onReady);
+        client.off("auth_failure", onAuthFailure);
+      };
+
+      client.once("qr", onQr);
+      client.once("ready", onReady);
+      client.once("auth_failure", onAuthFailure);
+
+      setTimeout(() => {
+        cleanup();
+        resolve(null);
+      }, 30000);
     });
 
-    // 3. Trigger/Ensure initialization
-    await initializeWhatsApp();
+    // Start initialization. We do NOT await it immediately, so the listeners can catch the events.
+    initializeWhatsApp(userId);
 
-    // 4. Wait for the QR to be emitted
+    // 4. Wait for the QR or Ready event
     const qr = await qrPromise;
 
     if (qr) {
@@ -44,6 +82,15 @@ async function whatsappLoginQrController(req, res) {
         authenticated: false,
         qr: qr,
         message: "QR code printed in terminal and sent in response.",
+      });
+    }
+
+    // If no QR was returned, check if the client is ready
+    if (getIsInitialized(userId)) {
+      return res.status(200).json({
+        success: true,
+        authenticated: true,
+        message: "WhatsApp connected successfully.",
       });
     }
 
@@ -64,6 +111,11 @@ async function whatsappLoginQrController(req, res) {
 
 async function whatsappPairCodeLoginController(req, res) {
   try {
+    const userId = req.user?.id || req.body?.userId || req.headers["x-user-id"];
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized. userId is required." });
+    }
+
     const { number } = req.body;
     if (!number) {
       return res
@@ -78,9 +130,13 @@ async function whatsappPairCodeLoginController(req, res) {
         .json({ success: false, message: "Invalid phone number" });
     }
 
-    console.log(`Requesting pairing code for: ${formattedNumber}`);
+    console.log(`[User ${userId}] Requesting pairing code for: ${formattedNumber}`);
 
-    if (!client.pupPage) {
+    // Ensure client is initialized
+    await initializeWhatsApp(userId);
+    const client = getClient(userId);
+
+    if (!client || !client.pupPage) {
       throw new Error(
         "WhatsApp browser page not ready. Please try again in a moment.",
       );
@@ -104,7 +160,7 @@ async function whatsappPairCodeLoginController(req, res) {
       timeoutPromise,
     ]);
 
-    console.log("🔑 Pairing Code generated:", pairingCode);
+    console.log(`[User ${userId}] 🔑 Pairing Code generated:`, pairingCode);
 
     return res.status(200).json({
       success: true,
