@@ -37,7 +37,7 @@ const getOrCreateClientState = (userId) => {
       path: cachePath,
     },
     puppeteer: {
-      headless: false,
+      headless: true,
       handleSIGINT: false,
       handleSIGTERM: false,
       executablePath:
@@ -173,17 +173,17 @@ const getAllExistingSessions = () => {
   try {
     if (!fs.existsSync(authPath)) return { authenticated: [], unauthenticated: [] };
     const files = fs.readdirSync(authPath);
-    
+
     // Filter folders starting with 'session-' (excluding the .authenticated files themselves)
-    const sessionFolders = files.filter(f => 
-      f.startsWith('session-') && 
-      !f.endsWith('.authenticated') && 
+    const sessionFolders = files.filter(f =>
+      f.startsWith('session-') &&
+      !f.endsWith('.authenticated') &&
       fs.statSync(path.join(authPath, f)).isDirectory()
     );
-    
+
     const authenticated = [];
     const unauthenticated = [];
-    
+
     for (const folder of sessionFolders) {
       const userId = folder.replace('session-', '');
       const authFile = `session-${userId}.authenticated`;
@@ -193,7 +193,7 @@ const getAllExistingSessions = () => {
         unauthenticated.push(userId);
       }
     }
-    
+
     return { authenticated, unauthenticated };
   } catch (e) {
     return { authenticated: [], unauthenticated: [] };

@@ -96,6 +96,7 @@ const registerWhatsAppHandlers = (client, stateManager, userId) => {
         body: msg.body,
         timestamp: new Date(),
         quotedMsg: quotedMsgData,
+        platform: "whatsapp",
       };
 
       stateManager.addMessage(messageData);

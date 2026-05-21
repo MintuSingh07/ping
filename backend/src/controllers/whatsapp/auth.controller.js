@@ -1,4 +1,3 @@
-
 const {
   getClient,
   getIsInitialized,
@@ -12,7 +11,7 @@ async function whatsappLoginQrController(req, res) {
     // TODO: Extract userId from your SWT Auth Middleware once built
     // For now, we fallback to req.body.userId or headers
     const userId = req.headers["x-user-id"];
-    
+
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized. userId is required." });
     }
@@ -29,7 +28,7 @@ async function whatsappLoginQrController(req, res) {
             message: "WhatsApp is already connected for this user.",
           });
         }
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // 3. Trigger/Ensure initialization for THIS user
@@ -50,12 +49,12 @@ async function whatsappLoginQrController(req, res) {
         cleanup();
         resolve(qr);
       };
-      
+
       const onReady = () => {
         cleanup();
         resolve(null);
       };
-      
+
       const onAuthFailure = () => {
         cleanup();
         resolve(null);
