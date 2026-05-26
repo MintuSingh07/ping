@@ -1,6 +1,7 @@
 const {
   getIsInitialized,
   initializeWhatsApp,
+  checkSessionExists,
 } = require("../../services/whatsapp/whatsapp.service");
 
 async function whatsAppMiddleware(req, res, next) {
@@ -11,6 +12,16 @@ async function whatsAppMiddleware(req, res, next) {
       return res.status(401).json({ 
         success: false, 
         message: "Unauthorized. userId is required to access WhatsApp services." 
+      });
+    }
+
+    // Check if session exists in file system first.
+    // If no session exists, return 503 immediately without spawning a Chrome browser process.
+    if (!checkSessionExists(userId)) {
+      return res.status(503).json({
+        success: false,
+        message: "WhatsApp service is not connected for this user. Please authenticate first.",
+        details: "No active session found. Please request a QR code to login.",
       });
     }
 

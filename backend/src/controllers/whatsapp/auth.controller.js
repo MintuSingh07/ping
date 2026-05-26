@@ -8,9 +8,7 @@ const { formatNumber } = require("../../services/formatnumber");
 
 async function whatsappLoginQrController(req, res) {
   try {
-    // TODO: Extract userId from your SWT Auth Middleware once built
-    // For now, we fallback to req.body.userId or headers
-    const userId = req.headers["x-user-id"];
+    const userId = req.user?.id || req.user?._id || req.headers["x-user-id"];
 
     if (!userId) {
       return res.status(401).json({ success: false, message: "Unauthorized. userId is required." });

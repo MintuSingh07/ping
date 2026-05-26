@@ -6,6 +6,8 @@ class SocketService {
   }
 
   initialize(server) {
+    const { incrementConnections, decrementConnections } = require("./whatsapp/whatsapp.service");
+
     this.io = new Server(server, {
       cors: {
         origin: "*", // Adjust this for production
@@ -23,12 +25,19 @@ class SocketService {
         // 2. Join a private room for this specific user
         socket.join(`user_${userId}`);
         console.log(`Socket ${socket.id} joined room: user_${userId}`);
+
+        // Reference counting: Increment active connections for this user
+        incrementConnections(userId);
       } else {
         console.warn(`Socket ${socket.id} connected without a userId.`);
       }
 
       socket.on("disconnect", () => {
         console.log(`Socket disconnected: ${socket.id}`);
+        if (userId) {
+          // Reference counting: Decrement active connections and trigger graceful grace-period teardown
+          decrementConnections(userId);
+        }
       });
     });
 

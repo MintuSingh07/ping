@@ -213,6 +213,73 @@ const getIsInitialized = (userId) => {
   return clients.get(userId).isInitialized;
 };
 
+// Keep track of active socket connection counts and teardown timers per user
+const activeConnections = new Map();
+const teardownTimers = new Map();
+
+/**
+ * Increment the count of active socket connections for a user.
+ * If a teardown timer was running for this user, clear it.
+ * If the WhatsApp client is not yet running but a valid session exists, auto-initialize it.
+ */
+const incrementConnections = (userId) => {
+  const currentCount = activeConnections.get(userId) || 0;
+  const newCount = currentCount + 1;
+  activeConnections.set(userId, newCount);
+  
+  console.log(`[User ${userId}] Active socket connections: ${newCount}`);
+
+  // 1. Clear teardown timer if active
+  if (teardownTimers.has(userId)) {
+    console.log(`[User ${userId}] Reconnected within grace period. Cancelling graceful WhatsApp teardown.`);
+    clearTimeout(teardownTimers.get(userId));
+    teardownTimers.delete(userId);
+  }
+
+  // 2. Auto-initialize WhatsApp if they have a saved session but client is not initialized/initializing
+  if (checkSessionExists(userId)) {
+    const state = clients.get(userId);
+    if (!state || (!state.isInitialized && !state.initializationPromise)) {
+      console.log(`[User ${userId}] Active session detected on socket connect. Auto-initializing WhatsApp client...`);
+      initializeWhatsApp(userId).catch((err) => {
+        console.error(`[User ${userId}] Failed to auto-initialize WhatsApp on connect:`, err);
+      });
+    }
+  }
+};
+
+/**
+ * Decrement the count of active socket connections for a user.
+ * If count reaches 0, start a 30-second graceful teardown timer to destroy the WhatsApp Chromium instance.
+ */
+const decrementConnections = (userId) => {
+  const currentCount = activeConnections.get(userId) || 0;
+  if (currentCount <= 0) return;
+
+  const newCount = currentCount - 1;
+  activeConnections.set(userId, newCount);
+  
+  console.log(`[User ${userId}] Active socket connections: ${newCount}`);
+
+  if (newCount === 0) {
+    console.log(`[User ${userId}] No active socket connections. Scheduling graceful WhatsApp teardown in 30 seconds...`);
+    
+    // Set 30 seconds grace period before closing the WhatsApp client
+    const timer = setTimeout(async () => {
+      try {
+        console.log(`[User ${userId}] Grace period expired. Shutting down WhatsApp Chromium client to free RAM...`);
+        await closeWhatsApp(userId);
+        teardownTimers.delete(userId);
+        activeConnections.delete(userId);
+      } catch (err) {
+        console.error(`[User ${userId}] Error tearing down WhatsApp client:`, err);
+      }
+    }, 30000);
+
+    teardownTimers.set(userId, timer);
+  }
+};
+
 module.exports = {
   initializeWhatsApp,
   closeWhatsApp,
@@ -221,5 +288,7 @@ module.exports = {
   getAllExistingSessions,
   getClient,
   getIsInitialized,
-  getOrCreateClientState
+  getOrCreateClientState,
+  incrementConnections,
+  decrementConnections
 };

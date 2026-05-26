@@ -8,6 +8,7 @@ const sendMessageRouter = require("./routes/whatsapp/message.route");
 const contactRouter = require("./routes/whatsapp/contact.route");
 const chatRouter = require("./routes/whatsapp/chat.route");
 const serviceRouter = require("./routes/service-route/route.service");
+const telegramAuthRouter = require("./routes/telegram/auth.route");
 
 const app = express();
 const cors = require("cors");
@@ -25,6 +26,9 @@ app.use("/api/whatsapp/auth", whatsappAuthRouter);
 app.use("/api/whatsapp/message", sendMessageRouter);
 app.use("/api/whatsapp/chat", chatRouter);
 app.use("/api/whatsapp/contact", contactRouter);
+
+// Telegram Controls
+app.use("/api/telegram/auth", telegramAuthRouter);
 
 // Generic services
 app.use("/api/service", serviceRouter);

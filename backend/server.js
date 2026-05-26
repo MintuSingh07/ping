@@ -3,9 +3,14 @@ const app = require("./src/app");
 const connectDB = require("./src/models/db");
 const {
   initializeWhatsApp,
-  getAllExistingSessions,
-  closeAllClients
+  getAllExistingSessions: getAllWhatsAppSessions,
+  closeAllClients: closeAllWhatsAppClients
 } = require("./src/services/whatsapp/whatsapp.service");
+const {
+  initializeTelegram,
+  getAllExistingSessions: getAllTelegramSessions,
+  closeAllTelegramClients
+} = require("./src/services/telegram/telegram.service");
 const socketService = require("./src/services/socket.service");
 
 const server = http.createServer(app);
@@ -24,18 +29,18 @@ server.listen(PORT, async () => {
     console.error("Database connection failed during startup:", err);
   }
 
-  // Auto-initialize only authenticated existing sessions
-  const { authenticated, unauthenticated } = getAllExistingSessions();
+  // Auto-initialize only authenticated existing WhatsApp sessions
+  const { authenticated: authWA, unauthenticated: unauthWA } = getAllWhatsAppSessions();
 
-  if (unauthenticated.length > 0) {
-    for (const userId of unauthenticated) {
+  if (unauthWA.length > 0) {
+    for (const userId of unauthWA) {
       console.log(`[-] Credentials not found for user "${userId}". You are not logged in with WhatsApp.`);
     }
   }
   
-  if (authenticated.length > 0) {
-    console.log(`[+] Found ${authenticated.length} authenticated session(s). Initializing...`);
-    for (const userId of authenticated) {
+  if (authWA.length > 0) {
+    console.log(`[+] Found ${authWA.length} authenticated WhatsApp session(s). Initializing...`);
+    for (const userId of authWA) {
       try {
         await initializeWhatsApp(userId);
       } catch (error) {
@@ -43,14 +48,34 @@ server.listen(PORT, async () => {
       }
     }
   } else {
-    console.log("[*] No active sessions found to auto-login. Waiting for /qr API to initialize clients...");
+    console.log("[*] No active WhatsApp sessions found to auto-login. Waiting for /qr API to initialize clients...");
+  }
+
+  // Auto-initialize only authenticated existing Telegram sessions
+  try {
+    const { authenticated: authTG } = getAllTelegramSessions();
+    if (authTG.length > 0) {
+      console.log(`[+] Found ${authTG.length} authenticated Telegram session(s). Initializing...`);
+      for (const userId of authTG) {
+        try {
+          await initializeTelegram(userId);
+        } catch (error) {
+          console.error(`Failed to auto-initialize Telegram for user ${userId}:`, error);
+        }
+      }
+    } else {
+      console.log("[*] No active Telegram sessions found to auto-login.");
+    }
+  } catch (tgInitErr) {
+    console.error("Failed to auto-initialize Telegram sessions:", tgInitErr);
   }
 });
 
 // Graceful shutdown
 const shutdown = async (signal) => {
   console.log(`Received ${signal}. Cleaning up all clients...`);
-  await closeAllClients();
+  await closeAllWhatsAppClients();
+  await closeAllTelegramClients();
   process.exit(0);
 };
 
