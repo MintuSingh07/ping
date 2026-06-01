@@ -1,7 +1,8 @@
 {
   "ignore": [
-    ".wwebjs_auth/**",
-    ".wwebjs_cache/**",
+    "src/.wwebjs_auth/**",
+    "src/.wwebjs_cache/**",
+    "src/.telegram_sessions/**",
     "**/session-*",
     "node_modules"
   ],

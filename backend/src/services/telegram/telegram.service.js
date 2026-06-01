@@ -5,7 +5,7 @@ const fs = require("fs");
 const socketService = require("../socket.service");
 
 // Ensure sessions directory exists
-const sessionsPath = path.join(__dirname, "../../../.telegram_sessions");
+const sessionsPath = path.join(__dirname, "../../.telegram_sessions");
 
 if (!fs.existsSync(sessionsPath)) {
   fs.mkdirSync(sessionsPath, { recursive: true });
