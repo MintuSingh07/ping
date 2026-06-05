@@ -1,8 +1,8 @@
-const { verify, getStore } = require("secure-web-token");
+const { verify } = require("secure-web-token");
 const User = require("../../models/user.model");
+const { redisStore } = require("../../utils/redis.util");
 
 const SWT_SECRET = process.env.SWT_SECRET;
-const store = getStore("memory");
 
 /**
  * SWT Authentication Middleware (per SWT docs)
@@ -29,27 +29,21 @@ async function authenticateSWT(req, res, next) {
       });
     }
 
-    // 3. Get session from store (contains fingerprint)
-    const session = store.getSession(sessionId);
-    if (!session) {
-      return res.status(401).json({
-        success: false,
-        message: "Session expired or revoked.",
-      });
-    }
-
-    // 4. Verify token (decrypts + checks fingerprint + checks expiry)
+    // 3. Verify token (decrypts + checks fingerprint + checks expiry + checks session in Redis)
     let payload;
     try {
-      payload = verify(token, SWT_SECRET, {
+      payload = await verify(token, SWT_SECRET, {
         sessionId,
-        fingerprint: session.fingerprint,
-        store: "memory",
+        fingerprint: true,
+        clientFingerprint: req.headers["user-agent"] || "",
+        store: redisStore,
+        clientSignature: req.headers["x-client-signature"],
+        clientPayload: req.headers["x-client-payload"],
       });
     } catch (verifyError) {
       return res.status(401).json({
         success: false,
-        message: "Invalid or expired token.",
+        message: verifyError.message || "Invalid or expired token.",
       });
     }
 

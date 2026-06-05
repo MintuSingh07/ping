@@ -1,8 +1,8 @@
 const User = require("../../models/user.model");
-const { sign, getStore } = require("secure-web-token");
+const { sign } = require("secure-web-token");
+const { redisStore } = require("../../utils/redis.util");
 
 const SWT_SECRET = process.env.SWT_SECRET;
-const store = getStore("memory");
 
 /**
  * Register a new user
@@ -63,7 +63,7 @@ async function registerPing(req, res) {
  */
 async function loginPing(req, res) {
   try {
-    const { email, password } = req.body;
+    const { email, password, clientPublicKey } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -98,8 +98,12 @@ async function loginPing(req, res) {
       });
     }
 
+    const pubKeyStr = clientPublicKey 
+      ? (typeof clientPublicKey === "string" ? clientPublicKey : JSON.stringify(clientPublicKey))
+      : undefined;
+
     // Sign SWT — encrypted token + device-bound session (per docs)
-    const { token, sessionId } = sign(
+    const { token, sessionId } = await sign(
       {
         userId: user._id.toString(),
         username: user.username,
@@ -108,7 +112,9 @@ async function loginPing(req, res) {
       SWT_SECRET,
       {
         fingerprint: true,
-        store: "memory",
+        clientFingerprint: req.headers["user-agent"] || "",
+        store: redisStore,
+        clientPublicKey: pubKeyStr,
         expiresIn: 7 * 24 * 60 * 60, // 7 days
       }
     );
@@ -153,7 +159,7 @@ async function logoutPing(req, res) {
     const sessionId = req.cookies.swt_session;
 
     if (sessionId) {
-      store.deleteSession(sessionId); // token is dead immediately
+      await redisStore.revokeSession(sessionId); // token is dead immediately
     }
 
     res.clearCookie("swt_session", {
