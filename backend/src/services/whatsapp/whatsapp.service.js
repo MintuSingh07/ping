@@ -40,6 +40,7 @@ const getOrCreateClientState = (userId) => {
       headless: true,
       handleSIGINT: false,
       handleSIGTERM: false,
+      protocolTimeout: 300000,
       executablePath:
         process.platform === "darwin"
           ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"

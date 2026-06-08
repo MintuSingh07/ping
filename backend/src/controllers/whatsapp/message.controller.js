@@ -1,4 +1,4 @@
-const { getClient } = require("../../services/whatsapp/whatsapp.service");
+const { getClient, getIsInitialized } = require("../../services/whatsapp/whatsapp.service");
 const { sendMedia } = require("../../services/whatsapp/media.service");
 
 async function sendMessageController(req, res) {
@@ -28,11 +28,12 @@ async function sendMessageController(req, res) {
         .json({ success: false, message: "Message content is required" });
     }
 
-    // Ensure the browser page is ready
-    if (!client.pupPage) {
-      throw new Error(
-        "WhatsApp browser page not ready. Please try again in a moment.",
-      );
+    // Ensure the client is ready
+    if (!getIsInitialized(userId)) {
+      return res.status(503).json({
+        success: false,
+        message: "WhatsApp client is not fully initialized or is not ready yet. Please wait.",
+      });
     }
 
     await client.sendMessage(chatId, message, {
@@ -82,10 +83,10 @@ async function sendMediaPersonalController(req, res) {
     }
 
     // Check if client is initialized
-    if (!client.pupPage) {
+    if (!getIsInitialized(userId)) {
       return res.status(503).json({
         success: false,
-        message: "WhatsApp client is not fully initialized. Please wait.",
+        message: "WhatsApp client is not fully initialized or is not ready yet. Please wait.",
       });
     }
 

@@ -1,12 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const { registerPing, loginPing, logoutPing } = require("../../controllers/ping/auth.controller");
+const { registerPing, loginPing, logoutPing, verifyOtpPing, resendOtpPing } = require("../../controllers/ping/auth.controller");
 const authenticateSWT = require("../../middlewares/ping/auth.middleware");
 
 // Public routes
 router.post("/register", registerPing);
 router.post("/login", loginPing);
 router.post("/logout", logoutPing);
+router.post("/verify-otp", verifyOtpPing);
+router.post("/resend-otp", resendOtpPing);
 
 // Protected route — just send Bearer token in Authorization header
 router.get("/me", authenticateSWT, (req, res) => {

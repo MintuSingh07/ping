@@ -1,4 +1,4 @@
-const { getClient } = require("../../services/whatsapp/whatsapp.service");
+const { getClient, getIsInitialized } = require("../../services/whatsapp/whatsapp.service");
 
 async function searchContactsController(req, res) {
   try {
@@ -18,11 +18,11 @@ async function searchContactsController(req, res) {
       return res.status(400).json({ success: false, message: "Search query is required." });
     }
 
-    // Ensure the browser page is ready
-    if (!client.pupPage) {
+    // Ensure the client is ready
+    if (!getIsInitialized(userId)) {
       return res.status(503).json({
         success: false,
-        message: "WhatsApp client is not fully initialized. Please wait.",
+        message: "WhatsApp client is not fully initialized or is not ready yet. Please wait.",
       });
     }
 

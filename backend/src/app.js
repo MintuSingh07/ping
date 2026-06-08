@@ -10,6 +10,8 @@ const chatRouter = require("./routes/whatsapp/chat.route");
 const serviceRouter = require("./routes/service-route/route.service");
 const telegramAuthRouter = require("./routes/telegram/auth.route");
 
+const authenticateSWT = require("./middlewares/ping/auth.middleware");
+
 const app = express();
 const cors = require("cors");
 
@@ -18,8 +20,13 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Ping signup / Signin
+// Ping signup / Signin (public auth routes)
 app.use("/api/ping/auth", pingAuthRouter);
+
+// Require Bearer token authentication for all messaging, integration, and AI service routes
+app.use("/api/whatsapp", authenticateSWT);
+app.use("/api/telegram", authenticateSWT);
+app.use("/api/service", authenticateSWT);
 
 // Whatsapp Controls
 app.use("/api/whatsapp/auth", whatsappAuthRouter);

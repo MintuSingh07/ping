@@ -1,4 +1,4 @@
-const { getClient } = require("../../services/whatsapp/whatsapp.service");
+const { getClient, getIsInitialized } = require("../../services/whatsapp/whatsapp.service");
 
 async function getChatsController(req, res) {
   try {
@@ -8,7 +8,7 @@ async function getChatsController(req, res) {
     }
 
     const client = getClient(userId);
-    if (!client || !client.pupPage) {
+    if (!client || !getIsInitialized(userId)) {
       return res.status(503).json({ success: false, message: "WhatsApp client is not ready. Please wait." });
     }
 
@@ -51,7 +51,7 @@ async function getMessagesController(req, res) {
     }
 
     const client = getClient(userId);
-    if (!client || !client.pupPage) {
+    if (!client || !getIsInitialized(userId)) {
       return res.status(503).json({ success: false, message: "WhatsApp client is not ready. Please wait." });
     }
 

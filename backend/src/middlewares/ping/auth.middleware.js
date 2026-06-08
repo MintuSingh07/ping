@@ -29,16 +29,13 @@ async function authenticateSWT(req, res, next) {
       });
     }
 
-    // 3. Verify token (decrypts + checks fingerprint + checks expiry + checks session in Redis)
+    // 3. Verify token (decrypts + checks session + checks DPoP proof in Redis/headers)
     let payload;
     try {
       payload = await verify(token, SWT_SECRET, {
-        sessionId,
-        fingerprint: true,
-        clientFingerprint: req.headers["user-agent"] || "",
-        store: redisStore,
-        clientSignature: req.headers["x-client-signature"],
-        clientPayload: req.headers["x-client-payload"],
+        sessionId: sessionId || undefined,
+        store: redisStore || undefined,
+        dpopProof: req.headers["x-dpop-proof"] || undefined,
       });
     } catch (verifyError) {
       return res.status(401).json({
