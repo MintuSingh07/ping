@@ -53,6 +53,8 @@ const getOrCreateClientState = (userId) => {
         "--no-first-run",
         "--no-zygote",
         "--disable-gpu",
+        "--disable-features=IsolateOrigins,site-per-process",
+        "--disable-site-isolation-trials",
       ],
     },
   });
