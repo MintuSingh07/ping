@@ -129,18 +129,61 @@ const registerWhatsAppHandlers = (client, stateManager, userId) => {
     console.log(`⏳ [User ${userId}] WhatsApp Loading: ${percent}% - ${message}`);
   });
 
-  client.on("ready", () => {
+  client.on("ready", async () => {
     console.log(`🚀 [User ${userId}] WhatsApp Client is ready!`);
     stateManager.setQr(null); // Clear QR code since connected
     stateManager.setInitialized(true);
     stateManager.setAuthenticated(true);
+
+    try {
+      const User = require("../../models/user.model");
+      const phone = client.info?.wid?.user || "";
+      const pushname = client.info?.pushname || "";
+
+      await User.findByIdAndUpdate(userId, {
+        $set: {
+          "integrations.whatsapp.connected": true,
+          "integrations.whatsapp.phoneNumber": phone,
+          "integrations.whatsapp.pushName": pushname,
+          "integrations.whatsapp.connectedAt": new Date(),
+        }
+      });
+      console.log(`[+] Database updated: User ${userId} WhatsApp marked connected.`);
+      
+      socketService.emitToUser(userId, "whatsapp_connected", {
+        connected: true,
+        phoneNumber: phone,
+        pushName: pushname
+      });
+    } catch (dbErr) {
+      console.error(`[-] Failed to update WhatsApp integration state in database for user ${userId}:`, dbErr);
+    }
   });
 
-  client.on("disconnected", (msg) => {
+  client.on("disconnected", async (msg) => {
     console.log(`🔌 [User ${userId}] WhatsApp Client disconnected:`, msg);
     stateManager.setQr(null); // Clear QR code
     stateManager.setInitialized(false);
     stateManager.setAuthenticated(false);
+
+    try {
+      const User = require("../../models/user.model");
+      await User.findByIdAndUpdate(userId, {
+        $set: {
+          "integrations.whatsapp.connected": false,
+          "integrations.whatsapp.phoneNumber": "",
+          "integrations.whatsapp.pushName": "",
+          "integrations.whatsapp.connectedAt": null,
+        }
+      });
+      console.log(`[-] Database updated: User ${userId} WhatsApp marked disconnected.`);
+      
+      socketService.emitToUser(userId, "whatsapp_disconnected", {
+        connected: false
+      });
+    } catch (dbErr) {
+      console.error(`[-] Failed to clear WhatsApp integration state in database for user ${userId}:`, dbErr);
+    }
   });
 };
 

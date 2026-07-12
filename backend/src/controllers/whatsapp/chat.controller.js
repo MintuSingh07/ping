@@ -14,21 +14,44 @@ async function getChatsController(req, res) {
 
     const chats = await client.getChats();
 
-    const mappedChats = chats.map((chat) => ({
-      id: chat.id._serialized,
-      name: chat.name,
-      isGroup: chat.isGroup,
-      unreadCount: chat.unreadCount,
-      timestamp: chat.timestamp,
-      pinned: chat.pinned,
-      archived: chat.archived,
-      // Provide a small snippet of the last message if available
-      lastMessage: chat.lastMessage ? {
-        body: chat.lastMessage.body,
-        type: chat.lastMessage.type,
-        timestamp: chat.lastMessage.timestamp,
-      } : null,
-    }));
+    const mappedChats = await Promise.all(
+      chats.map(async (chat) => {
+        let isOnline = false;
+        let lastSeen = null;
+
+        if (!chat.isGroup) {
+          try {
+            const contact = await chat.getContact();
+            if (typeof contact.getPresence === "function") {
+              const presence = await contact.getPresence();
+              if (presence) {
+                isOnline = presence.isOnline || false;
+                lastSeen = presence.lastSeen || null;
+              }
+            }
+          } catch (e) {
+            // Ignore presence errors
+          }
+        }
+
+        return {
+          id: chat.id._serialized,
+          name: chat.name,
+          isGroup: chat.isGroup,
+          unreadCount: chat.unreadCount,
+          timestamp: chat.timestamp,
+          pinned: chat.pinned,
+          archived: chat.archived,
+          isOnline,
+          lastSeen,
+          lastMessage: chat.lastMessage ? {
+            body: chat.lastMessage.body,
+            type: chat.lastMessage.type,
+            timestamp: chat.lastMessage.timestamp,
+          } : null,
+        };
+      })
+    );
 
     return res.status(200).json({
       success: true,
