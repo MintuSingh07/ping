@@ -1,0 +1,86 @@
+:root {
+  /* Common typography and settings */
+  --sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --heading: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, Consolas, monospace;
+  font: 16px/1.5 var(--sans);
+  
+  /* Light Mode Variables (Default/fallback if .light class is added) */
+  --bg-sidebar: #f3f4f6;
+  --bg-main: #ffffff;
+  --bg-profile: #e5e7eb;
+  --bg-search: #ffffff;
+  --border-color: #e5e7eb;
+  --border-search: #d1d5db;
+  --text-primary: #111827;
+  --text-muted: #6b7280;
+  --sidebar-active: #e5e7eb;
+  --sidebar-hover: #f3f4f6;
+  --badge-bg: #6366f1;
+  --badge-text: #ffffff;
+  --accent-color: #6366f1;
+  --scrollbar-track: #f1f1f1;
+  --scrollbar-thumb: #c1c1c1;
+}
+
+/* Dark Mode Variables (Default theme of the app as shown in mock) */
+:root:not(.light), .dark {
+  --bg-sidebar: #131316;
+  --bg-main: #1e1f22;
+  --bg-profile: #1b1b1e;
+  --bg-search: #2a2b2f;
+  --border-color: #2e3035;
+  --border-search: #3f424a;
+  --text-primary: #f3f4f6;
+  --text-muted: #9ca3af;
+  --sidebar-active: #202125;
+  --sidebar-hover: #1b1b1e;
+  --badge-bg: #6366f1;
+  --badge-text: #ffffff;
+  --accent-color: #818cf8;
+  --scrollbar-track: #1b1b1e;
+  --scrollbar-thumb: #2d2e34;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
