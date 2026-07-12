@@ -240,7 +240,17 @@ function App() {
 
   const [otpCode, setOtpCode] = useState('')
   
-  const [chats, setChats] = useState<ChatItemData[]>(mockChats)
+  const CHATS_CACHE_KEY = 'ping_chats_cache'
+
+  const [chats, setChats] = useState<ChatItemData[]>(() => {
+    try {
+      const cached = localStorage.getItem(CHATS_CACHE_KEY)
+      if (cached) return JSON.parse(cached) as ChatItemData[]
+    } catch {
+      // Corrupted cache — ignore
+    }
+    return mockChats
+  })
 
   // Fetch real WhatsApp chats from backend
   const fetchRealChats = async () => {
@@ -249,6 +259,10 @@ function App() {
       if (!activeToken) return
 
       const res = await fetchWithDpop('/whatsapp/chat')
+      if (!res.ok) {
+        console.warn('[chats] API responded with', res.status, res.statusText)
+        return
+      }
       const data = await res.json()
       if (data.success && data.chats) {
         const realChats: ChatItemData[] = data.chats.map((c: any) => {
@@ -272,7 +286,7 @@ function App() {
           return {
             id: c.id,
             name: c.name || c.id.split('@')[0],
-            avatar: '',
+            avatar: c.avatar || '',
             message: c.lastMessage ? c.lastMessage.body : 'No messages yet',
             time: timeDisplay,
             unreadCount: c.unreadCount || 0,
@@ -295,6 +309,11 @@ function App() {
         })
 
         setChats(combined)
+        try {
+          localStorage.setItem(CHATS_CACHE_KEY, JSON.stringify(combined))
+        } catch {
+          // Quota exceeded — skip caching
+        }
       }
     } catch (e) {
       console.error('Failed to fetch real WhatsApp chats:', e)
@@ -308,9 +327,29 @@ function App() {
       const interval = setInterval(fetchRealChats, 10000)
       return () => clearInterval(interval)
     } else {
-      setChats(mockChats)
+      // Restore cached chats if available, else fall back to mocks
+      try {
+        const cached = localStorage.getItem(CHATS_CACHE_KEY)
+        if (cached) {
+          setChats(JSON.parse(cached) as ChatItemData[])
+        } else {
+          setChats(mockChats)
+        }
+      } catch {
+        setChats(mockChats)
+      }
     }
   }, [user?.integrations?.whatsapp?.connected, token])
+
+  // Keep user.integrations.whatsapp.connected fresh so the chats poller
+  // reacts immediately after reconnection or backend restart
+  useEffect(() => {
+    if (!token) return
+    const profileInterval = setInterval(() => {
+      fetchUserProfile(token)
+    }, 15000)
+    return () => clearInterval(profileInterval)
+  }, [token])
 
   // Sync user profile background details to check integration status
   const fetchUserProfile = async (authToken: string) => {

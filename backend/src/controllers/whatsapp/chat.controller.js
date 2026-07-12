@@ -18,10 +18,23 @@ async function getChatsController(req, res) {
       chats.map(async (chat) => {
         let isOnline = false;
         let lastSeen = null;
+        let avatar = "";
+        let isBusiness = false;
+        let verifiedName = null;
+
+        // Try to fetch profile picture URL for any chat
+        try {
+          avatar = await client.getProfilePicUrl(chat.id._serialized) || "";
+        } catch (picErr) {
+          // Ignore profile pic fetch failures
+        }
 
         if (!chat.isGroup) {
           try {
             const contact = await chat.getContact();
+            isBusiness = contact.isBusiness || false;
+            verifiedName = contact.verifiedName || null;
+
             if (typeof contact.getPresence === "function") {
               const presence = await contact.getPresence();
               if (presence) {
@@ -30,13 +43,15 @@ async function getChatsController(req, res) {
               }
             }
           } catch (e) {
-            // Ignore presence errors
+            // Ignore contact lookup failures
           }
         }
 
+        const displayName = verifiedName || chat.name || chat.id.user;
+
         return {
           id: chat.id._serialized,
-          name: chat.name,
+          name: displayName,
           isGroup: chat.isGroup,
           unreadCount: chat.unreadCount,
           timestamp: chat.timestamp,
@@ -44,6 +59,9 @@ async function getChatsController(req, res) {
           archived: chat.archived,
           isOnline,
           lastSeen,
+          avatar,
+          isBusiness,
+          verifiedName,
           lastMessage: chat.lastMessage ? {
             body: chat.lastMessage.body,
             type: chat.lastMessage.type,

@@ -116,6 +116,35 @@ const initializeWhatsApp = async (userId) => {
 
   state.initializationPromise = (async () => {
     console.log(`Initializing WhatsApp client for user: ${userId}...`);
+
+    // Remove Chrome's SingletonLock to prevent "browser already running" error
+    // after a nodemon/server restart that didn't gracefully close Puppeteer.
+    try {
+      const sessionDir = path.join(authPath, `session-${userId}`);
+      const profileDir = fs.existsSync(sessionDir)
+        ? fs.readdirSync(sessionDir).find((d) => d.startsWith("Default") || d === "Default")
+          ? sessionDir
+          : path.join(sessionDir, fs.readdirSync(sessionDir)[0] || "")
+        : null;
+
+      // Search for SingletonLock in common Chrome profile locations
+      const candidates = [
+        path.join(authPath, `session-${userId}`, "SingletonLock"),
+        path.join(authPath, `session-${userId}`, "Default", "SingletonLock"),
+        profileDir ? path.join(profileDir, "SingletonLock") : null,
+      ].filter(Boolean);
+
+      for (const lockFile of candidates) {
+        if (lockFile && fs.existsSync(lockFile)) {
+          fs.unlinkSync(lockFile);
+          console.log(`[+] Removed stale Chrome lock: ${lockFile}`);
+        }
+      }
+    } catch (lockErr) {
+      // Non-fatal — continue even if cleanup fails
+      console.warn(`[!] Could not clean Chrome lock for ${userId}:`, lockErr.message);
+    }
+
     try {
       await state.client.initialize();
       return true;
@@ -265,9 +294,9 @@ const decrementConnections = (userId) => {
   console.log(`[User ${userId}] Active socket connections: ${newCount}`);
 
   if (newCount === 0) {
-    console.log(`[User ${userId}] No active socket connections. Scheduling graceful WhatsApp teardown in 30 seconds...`);
+    console.log(`[User ${userId}] No active socket connections. Scheduling graceful WhatsApp teardown in 10 minutes...`);
     
-    // Set 30 seconds grace period before closing the WhatsApp client
+    // 10-minute grace period — keeps Chrome alive while user browses via HTTP (no socket)
     const timer = setTimeout(async () => {
       try {
         console.log(`[User ${userId}] Grace period expired. Shutting down WhatsApp Chromium client to free RAM...`);
@@ -277,7 +306,7 @@ const decrementConnections = (userId) => {
       } catch (err) {
         console.error(`[User ${userId}] Error tearing down WhatsApp client:`, err);
       }
-    }, 30000);
+    }, 600000); // 10 minutes
 
     teardownTimers.set(userId, timer);
   }

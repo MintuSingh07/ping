@@ -4,6 +4,27 @@ const {
   checkSessionExists,
 } = require("../../services/whatsapp/whatsapp.service");
 
+/**
+ * Wait up to `timeoutMs` for the WhatsApp client to become fully initialized.
+ * Returns true if ready in time, false if timed out.
+ */
+function waitForInitialized(userId, timeoutMs = 30000) {
+  return new Promise((resolve) => {
+    if (getIsInitialized(userId)) return resolve(true);
+    const interval = setInterval(() => {
+      if (getIsInitialized(userId)) {
+        clearInterval(interval);
+        clearTimeout(timer);
+        resolve(true);
+      }
+    }, 500);
+    const timer = setTimeout(() => {
+      clearInterval(interval);
+      resolve(false);
+    }, timeoutMs);
+  });
+}
+
 async function whatsAppMiddleware(req, res, next) {
   try {
     const userId = req.user?.id || req.body?.userId || req.headers["x-user-id"] || req.query?.userId;
@@ -25,17 +46,16 @@ async function whatsAppMiddleware(req, res, next) {
       });
     }
 
-    // Attempt to initialize the client if it's not already initialized
-    await initializeWhatsApp(userId);
+    // Kick off initialization (no-op if already running or done)
+    initializeWhatsApp(userId).catch(() => {});
 
-    // Check if the client is actually connected and ready to send/receive messages
-    if (!getIsInitialized(userId)) {
+    // Wait up to 30s for the client to be fully ready (handles first-request-after-restart)
+    const ready = await waitForInitialized(userId, 30000);
+    if (!ready) {
       return res.status(503).json({
         success: false,
-        message:
-          "WhatsApp service is not connected for this user. Please authenticate first.",
-        details:
-          "You might need to scan the QR code or wait for the connection to be established.",
+        message: "WhatsApp service is starting up. Please try again in a moment.",
+        details: "Client initialization timed out after 30 seconds.",
       });
     }
 
